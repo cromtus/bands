@@ -2,4 +2,5 @@
 See it on [cromtus.ru/bands](http://cromtus.ru/bands)
 
 ## Requirements:
+- Server
 - PHP :((
