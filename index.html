@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>bands-on-maps</title>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" type="text/javascript"></script>
+<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" type="text/javascript"></script>
+<link href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+  * {
+    margin: 0;
+    padding: 0;
+    outline: none;
+    font-family: inherit;
+    font-size: inherit;
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    width: 100%;
+    height: 100%;
+    font-family: arial;
+    font-size: 13px;
+  }
+  
+  body {
+    display: flex;
+    flex-direction: row;
+    
+  }
+  
+  aside {
+    width: 300px;
+  }
+  
+  aside section {
+    margin: 20px 20px 0;
+  }
+  
+  aside section header {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  aside section div.range {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  aside section input, aside section textarea {
+    padding: 5px;
+    border: 1px solid #aaa;
+  }
+  
+  aside section input.range {
+    width: 125px;
+    display: inline-block;
+  }
+  
+  aside section label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    user-select: none;
+    cursor: pointer;
+  }
+  
+  aside section label:hover {
+    background: #eee;
+  }
+  
+  aside section label span {
+    margin-right: auto;
+  }
+  
+  aside section label div {
+    border: 2px solid;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  aside section label b {
+    font-size: 25px;
+    line-height: 0;
+  }
+  
+  aside section label b:hover {
+    color: #f00;
+  }
+  
+  aside section textarea {
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+  }
+  
+  aside section button {
+    margin-top: 5px;
+    padding: 5px;
+  }
+  
+  #strip {
+    background: url('/map/img/bg.gif');
+    width: 100%;
+    height: 10px;
+    display: none;
+    margin-top: 20px;
+  }
+  
+  main {
+    flex: 1 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  
+  .leaflet-marker-icon {
+    border: none;
+    background: none;
+  }
+</style>
+</head>
+<body>
+  <aside>
+    <!--
+    <section>
+      <header>Диапазон дат</header>
+      <div class="range">
+        <input type="date" class="range"><input type="date" class="range">
+      </div>
+    </section>
+    -->
+    <section>
+      <header>Список групп</header>
+      <div id="list">
+      </div>
+    </section>
+    <section>
+      <header>Добавить к списку</header>
+      <textarea rows="5" id="addition" placeholder="Названия исполнителей по одному на строке"></textarea>
+      <button onclick="push()">Добавить</button>
+    </section>
+    <div id="strip"></div>
+  </aside>
+  <main>
+  </main>
+  <script type="text/javascript">
+    var map = L.map($('main')[0]).setView([60, 30], 3);
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+	attribution: 'Map data &copy; <a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a> contributors.'
+}).addTo(map);
+    var $list = $("#list");
+    var $strip = $("#strip");
+    var requestsPending = 0;
+    var markers = {};
+    var list = localStorage.list ? JSON.parse(localStorage.list) : {};
+    function updateList() {
+      localStorage.list = JSON.stringify(list);
+    }
+    function check($label) {
+      var $div = $label.find('div');
+      var name = $label.find('span').text();
+      var checked = list[name].checked;
+      $div.css({background: checked ? $div.css('borderColor') : "transparent"});
+      if (markers[name]) {
+        for (var i in markers[name]) {
+          markers[name][i].setOpacity(checked * 1);
+        }
+      }
+    }
+    function add(item) {
+      var $label = $('<label><div style="border-color: ' + item.color + ';"></div><span>' + item.name + '</span><b onmouseup="event.stopPropagation(); remove($(this).parent())">&#215;</b></label>');
+      $label.off().on('mouseup', function() {
+        $this = $(this);
+        var name = $this.find('span').text();
+        list[name].checked = !list[name].checked;
+        localStorage.list = JSON.stringify(list);
+        check($this);
+      });
+      $list.append($label);
+      if (item.checked) {
+        check($label);
+      }
+    }
+    for (var i in list) {
+      var item = list[i];
+      add(item);
+      addArtist(item.name);
+    }
+    function randColor() {
+      var c = "#";
+      for (var i = 0; i < 6; i++) {
+        c += Math.floor(Math.random() * 0x10).toString(16);
+      }
+      return c;
+    }
+    function push() {
+      var lines = $("#addition").val().split("\n");
+      for (var i in lines) {
+        var name = lines[i].trim();
+        if (name != "" && !list[name]) {
+          var item = {
+            name: name,
+            color: randColor(),
+            checked: true
+          };
+          list[name] = item;
+          add(item);
+          addArtist(name);
+        } 
+      }
+      updateList();
+      $("#addition").val("");
+    }
+    function remove($label) {
+      var name = $label.find("span").text();
+      $label.remove();
+      for (var i in markers[name]) {
+        markers[name][i].remove();
+      }
+      delete markers[name];
+      delete list[name];
+      updateList();
+    }
+    function addArtist(name) {
+      $strip.show();
+      requestsPending++;
+      $.ajax({
+        url: "request.php",
+        data: {
+          name: name
+        },
+        success: function(response) {
+          response = JSON.parse(response);
+          var size = 10;
+          var markerHtmlStyles = `
+            background-color: ${list[name].color};
+            width: ${2 * size}px;
+            height: ${2 * size}px;
+            display: block;
+            left: ${-size}px;
+            top: ${-size}px;
+            position: relative;
+            border-radius: ${size}px ${size}px 0;
+            transform: rotate(45deg);
+            border: 1px solid #FFFFFF`;
+          for (var i in response) {
+            var item = response[i];
+            if (!markers[name]) markers[name] = [];
+            var marker = L.marker([Number(item.lat), Number(item.lng)], {
+              icon: L.divIcon({
+                iconAnchor: [0, size * Math.sqrt(2)],
+                popupAnchor: [0, -size],
+                html: `<span style="${markerHtmlStyles}" />`
+              })
+            }).addTo(map);
+            marker.bindPopup(`
+              <b>${item.city}</b><br>
+              ${new Date(item.datetime).toDateString()}<br>
+              <a href='${item.url}' target='_blank'>Ссылочка</a>
+            `);
+            /*
+            var marker = new google.maps.Marker({
+              icon: {
+                  path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                  fillColor: list[name].color,
+                  strokeOpacity: 0,
+                  fillOpacity: 1,
+                  scale: 3
+              },
+              map: map,
+              visible: list[name].checked,
+              title: item.city + ", " + item.datetime,
+              position: {lat: Number(item.lat), lng: Number(item.lng)}
+            });
+            */
+            markers[name].push(marker);
+          }
+          requestsPending--;
+          if (requestsPending == 0) {
+            $strip.hide();
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
