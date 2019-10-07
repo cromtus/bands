@@ -1,2 +1,2 @@
 # bands-on-maps
-See it on cromtus.tu/bands
+See it on <a href='http://cromtus.ru/bands'>cromtus.ru/bands</a>
