@@ -1,5 +1,5 @@
 # bands-on-maps
-See it on <a href='http://cromtus.ru/bands'>cromtus.ru/bands</a>
+See it on [cromtus.ru/bands](http://cromtus.ru/bands)
 
 ## Requirements:
 - PHP :((
