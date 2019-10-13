@@ -15,4 +15,3 @@ foreach ($data as $item) {
   );
 }
 echo json_encode($result);
-?> 
