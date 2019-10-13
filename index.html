@@ -19,7 +19,7 @@
   html, body {
     width: 100%;
     height: 100%;
-    font-family: arial;
+    font-family: arial, serif;
     font-size: 13px;
   }
   
@@ -151,34 +151,37 @@
   <main>
   </main>
   <script type="text/javascript">
-    var map = L.map($('main')[0]).setView([60, 30], 3);
+    const map = L.map($('main')[0]).setView([60, 30], 3);
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-	attribution: 'Map data &copy; <a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a> contributors.'
-}).addTo(map);
-    var $list = $("#list");
-    var $strip = $("#strip");
-    var requestsPending = 0;
-    var markers = {};
-    var list = localStorage.list ? JSON.parse(localStorage.list) : {};
+      attribution: 'Map data &copy; <a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a> contributors.'
+    }).addTo(map);
+    const $list = $("#list");
+    const $strip = $("#strip");
+    let requestsPending = 0;
+    const markers = {};
+    const list = localStorage.list ? JSON.parse(localStorage.list) : {};
+
     function updateList() {
       localStorage.list = JSON.stringify(list);
     }
+
     function check($label) {
-      var $div = $label.find('div');
-      var name = $label.find('span').text();
-      var checked = list[name].checked;
+      const $div = $label.find('div');
+      const name = $label.find('span').text();
+      const checked = list[name].checked;
       $div.css({background: checked ? $div.css('borderColor') : "transparent"});
       if (markers[name]) {
-        for (var i in markers[name]) {
+        for (const i in markers[name]) {
           markers[name][i].setOpacity(checked * 1);
         }
       }
     }
+
     function add(item) {
-      var $label = $('<label><div style="border-color: ' + item.color + ';"></div><span>' + item.name + '</span><b onmouseup="event.stopPropagation(); remove($(this).parent())">&#215;</b></label>');
-      $label.off().on('mouseup', function() {
-        $this = $(this);
-        var name = $this.find('span').text();
+      const $label = $('<label><div style="border-color: ' + item.color + ';"></div><span>' + item.name + '</span><b onmouseup="event.stopPropagation(); remove($(this).parent())">&#215;</b></label>');
+      $label.off().on('mouseup', function () {
+        const $this = $(this);
+        const name = $this.find('span').text();
         list[name].checked = !list[name].checked;
         localStorage.list = JSON.stringify(list);
         check($this);
@@ -188,24 +191,28 @@
         check($label);
       }
     }
-    for (var i in list) {
-      var item = list[i];
+
+    for (const i in list) {
+      const item = list[i];
       add(item);
       addArtist(item.name);
     }
+
     function randColor() {
-      var c = "#";
-      for (var i = 0; i < 6; i++) {
+      let c = "#";
+      for (let i = 0; i < 6; i++) {
         c += Math.floor(Math.random() * 0x10).toString(16);
       }
       return c;
     }
+
     function push() {
-      var lines = $("#addition").val().split("\n");
-      for (var i in lines) {
-        var name = lines[i].trim();
-        if (name != "" && !list[name]) {
-          var item = {
+      const $addition = $("#addition");
+      const lines = $addition.val().split("\n");
+      for (const i in lines) {
+        const name = lines[i].trim();
+        if (name !== "" && !list[name]) {
+          const item = {
             name: name,
             color: randColor(),
             checked: true
@@ -213,21 +220,23 @@
           list[name] = item;
           add(item);
           addArtist(name);
-        } 
+        }
       }
       updateList();
-      $("#addition").val("");
+      $addition.val("");
     }
+
     function remove($label) {
-      var name = $label.find("span").text();
+      const name = $label.find("span").text();
       $label.remove();
-      for (var i in markers[name]) {
+      for (const i in markers[name]) {
         markers[name][i].remove();
       }
       delete markers[name];
       delete list[name];
       updateList();
     }
+
     function addArtist(name) {
       $strip.show();
       requestsPending++;
@@ -236,10 +245,10 @@
         data: {
           name: name
         },
-        success: function(response) {
+        success: function (response) {
           response = JSON.parse(response);
-          var size = 10;
-          var markerHtmlStyles = `
+          const size = 10;
+          const markerHtmlStyles = `
             background-color: ${list[name].color};
             width: ${2 * size}px;
             height: ${2 * size}px;
@@ -250,10 +259,10 @@
             border-radius: ${size}px ${size}px 0;
             transform: rotate(45deg);
             border: 1px solid #FFFFFF`;
-          for (var i in response) {
-            var item = response[i];
+          for (const i in response) {
+            const item = response[i];
             if (!markers[name]) markers[name] = [];
-            var marker = L.marker([Number(item.lat), Number(item.lng)], {
+            const marker = L.marker([Number(item.lat), Number(item.lng)], {
               icon: L.divIcon({
                 iconAnchor: [0, size * Math.sqrt(2)],
                 popupAnchor: [0, -size],
@@ -283,7 +292,7 @@
             markers[name].push(marker);
           }
           requestsPending--;
-          if (requestsPending == 0) {
+          if (requestsPending === 0) {
             $strip.hide();
           }
         }
