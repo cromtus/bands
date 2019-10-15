@@ -5,6 +5,9 @@
 <title>bands-on-maps</title>
 <script src="https://code.jquery.com/jquery-3.3.1.min.js" type="text/javascript"></script>
 <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
 <link href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" rel="stylesheet" type="text/css">
 <style type="text/css">
   * {
@@ -118,7 +121,7 @@
     justify-content: center;
     align-items: center;
   }
-
+  
   .visually-hidden {
     border: 0;
     clip: rect(0 0 0 0);
@@ -157,6 +160,12 @@
       <textarea rows="5" id="addition" placeholder="Названия исполнителей по одному на строке"></textarea>
       <button onclick="push()">Добавить</button>
     </section>
+    <section>
+      <header>Фильтровать по датам</header>
+      <label>
+        <input type="text" name="date-filter" value=""/>
+      </label>
+    </section>
     <div id="strip"></div>
   </aside>
   <main>
@@ -170,44 +179,110 @@
     const $strip = $("#strip");
     let requestsPending = 0;
     const markers = {};
-    const list = localStorage.list ? JSON.parse(localStorage.list) : {};
+    const events = [];
+    const artistsByName = localStorage.list ? JSON.parse(localStorage.list) : {};
+
+    const dateFilter = $('input[name="date-filter"]');
+    
+    let dateRange = localStorage.dateRange ? parseDateRange(localStorage.dateRange) : null;
+    
+    function parseDateRange() {
+      const strings = JSON.parse(localStorage.dateRange);
+      return {
+        start: moment(strings.start),
+        end: moment(strings.end)
+      }
+    }
+    
+    function setDateRange(range) {
+      dateRange = range;
+      localStorage.dateRange = JSON.stringify({
+        start: range.start.toISOString(),
+        end: range.end.toISOString()
+      });
+    }
+
+    dateFilter.daterangepicker({
+      autoUpdateInput: false,
+      locale: {
+        cancelLabel: 'Clear'
+      }
+    });
+    
+    if (dateRange != null) {
+      dateFilter.val(formatDateRange(dateRange.start, dateRange.end));
+    }
+
+    function formatDateRange(startDate, endDate) {
+      return startDate.format('YYYY-MM-DD') + ' - ' + endDate.format('YYYY-MM-DD');
+    }
+
+    dateFilter.on('apply.daterangepicker', function (ev, picker) {
+      $(this).val(formatDateRange(picker.startDate, picker.endDate));
+      setDateRange({
+        start: picker.startDate,
+        end: picker.endDate
+      });
+      redrawMarkers();
+    });
+
+    dateFilter.on('cancel.daterangepicker', function () {
+      $(this).val('');
+      dateRange = setDateRange(null);
+      redrawMarkers();
+    });
 
     function updateList() {
-      localStorage.list = JSON.stringify(list);
+      localStorage.list = JSON.stringify(artistsByName);
     }
 
     function check($label) {
       const $div = $label.find('div');
       const name = $label.find('span').text();
-      const checked = list[name].checked;
+      const checked = artistsByName[name].checked;
       $div.css({background: checked ? $div.css('borderColor') : "transparent"});
       if (markers[name]) {
-        for (const i in markers[name]) {
-          markers[name][i].setOpacity(checked * 1);
+        for (const marker of markers[name]) {
+          marker.setOpacity(checked * 1);
         }
       }
     }
 
-    function add(item) {
-      const $label = $('<label><div style="border-color: ' + item.color + ';"></div><span>' + item.name + '</span><b onmouseup="event.stopPropagation(); remove($(this).parent())">&#215;</b></label>');
+    function addToList(artist) {
+      const $label = $('<label><div style="border-color: ' + artist.color + ';"></div><span>' + artist.name + '</span><b onmouseup="event.stopPropagation(); remove($(this).parent())">&#215;</b></label>');
       $label.off().on('mouseup', function () {
         const $this = $(this);
         const name = $this.find('span').text();
-        list[name].checked = !list[name].checked;
-        localStorage.list = JSON.stringify(list);
+        artistsByName[name].checked = !artistsByName[name].checked;
+        localStorage.list = JSON.stringify(artistsByName);
         check($this);
       });
       $list.append($label);
-      if (item.checked) {
+      if (artist.checked) {
         check($label);
       }
     }
 
-    for (const i in list) {
-      const item = list[i];
-      add(item);
-      addArtist(item.name);
+    function updateMarkerOpacity(artistName, datetime, marker) {
+      if (!artistsByName[artistName].checked || dateRange != null && !moment(datetime).isBetween(dateRange.start, dateRange.end)) {
+        marker.setOpacity(0);
+      } else {
+        marker.setOpacity(1);
+      }
     }
+
+    function redrawMarkers() {
+      for (const {marker, datetime, artistName} of events) {
+        updateMarkerOpacity(artistName, datetime, marker);
+      }
+    }
+
+    for (const name of Object.getOwnPropertyNames(artistsByName)) {
+      const item = artistsByName[name];
+      addToList(item);
+      addMarkers(item.name);
+    }
+    redrawMarkers();
 
     function randColor() {
       let c = "#";
@@ -220,47 +295,49 @@
     function push() {
       const $addition = $("#addition");
       const lines = $addition.val().split("\n");
-      for (const i in lines) {
-        const name = lines[i].trim();
-        if (name !== "" && !list[name]) {
-          const item = {
+      for (const line of lines) {
+        const name = line.trim();
+        if (name !== "" && !artistsByName[name]) {
+          const artist = {
             name: name,
             color: randColor(),
             checked: true
           };
-          list[name] = item;
-          add(item);
-          addArtist(name);
+          artistsByName[name] = artist;
+          addToList(artist);
+          addMarkers(name);
         }
       }
       updateList();
       $addition.val("");
+      redrawMarkers();
     }
 
     function remove($label) {
       const name = $label.find("span").text();
       $label.remove();
-      for (const i in markers[name]) {
-        markers[name][i].remove();
+      for (const marker of markers[name]) {
+        marker.remove();
       }
       delete markers[name];
-      delete list[name];
+      delete artistsByName[name];
       updateList();
     }
 
-    function addArtist(name) {
+    function addMarkers(artistName) {
       $strip.show();
       requestsPending++;
+      // noinspection JSUnusedGlobalSymbols
       $.ajax({
         url: "request.php",
         data: {
-          name: name
+          name: artistName
         },
         success: function (response) {
-          response = JSON.parse(response);
+          const responseEvents = JSON.parse(response);
           const size = 10;
           const markerHtmlStyles = `
-            background-color: ${list[name].color};
+            background-color: ${artistsByName[artistName].color};
             width: ${2 * size}px;
             height: ${2 * size}px;
             display: block;
@@ -270,10 +347,9 @@
             border-radius: ${size}px ${size}px 0;
             transform: rotate(45deg);
             border: 1px solid #FFFFFF`;
-          for (const i in response) {
-            const item = response[i];
-            if (!markers[name]) markers[name] = [];
-            const marker = L.marker([Number(item.lat), Number(item.lng)], {
+          for (const event of responseEvents) {
+            if (!markers[artistName]) markers[artistName] = [];
+            const marker = L.marker([Number(event["lat"]), Number(event["lng"])], {
               icon: L.divIcon({
                 iconAnchor: [0, size * Math.sqrt(2)],
                 popupAnchor: [0, -size],
@@ -281,10 +357,11 @@
               })
             }).addTo(map);
             marker.bindPopup(`
-              <b>${item.city}</b><br>
-              ${new Date(item.datetime).toDateString()}<br>
-              <a href='${item.url}' target='_blank'>Ссылочка</a>
+              <b>${event["city"]}</b><br>
+              ${new Date(event["datetime"]).toDateString()}<br>
+              <a href='${event["url"]}' target='_blank'>Ссылочка</a>
             `);
+            updateMarkerOpacity(artistName, event["datetime"], marker);
             /*
             var marker = new google.maps.Marker({
               icon: {
@@ -300,7 +377,12 @@
               position: {lat: Number(item.lat), lng: Number(item.lng)}
             });
             */
-            markers[name].push(marker);
+            markers[artistName].push(marker);
+            events.push({
+              marker,
+              artistName,
+              datetime: event["datetime"]
+            });
           }
           requestsPending--;
           if (requestsPending === 0) {
