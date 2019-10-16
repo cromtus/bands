@@ -188,18 +188,18 @@
     
     function parseDateRange() {
       const strings = JSON.parse(localStorage.dateRange);
-      return {
+      return strings ? {
         start: moment(strings.start),
         end: moment(strings.end)
-      }
+      } : null;
     }
     
     function setDateRange(range) {
       dateRange = range;
-      localStorage.dateRange = JSON.stringify({
+      localStorage.dateRange = JSON.stringify(range ? {
         start: range.start.toISOString(),
         end: range.end.toISOString()
-      });
+      } : null);
     }
 
     dateFilter.daterangepicker({
