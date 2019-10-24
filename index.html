@@ -347,8 +347,8 @@
             border-radius: ${size}px ${size}px 0;
             transform: rotate(45deg);
             border: 1px solid #FFFFFF`;
+          if (!markers[artistName]) markers[artistName] = [];
           for (const event of responseEvents) {
-            if (!markers[artistName]) markers[artistName] = [];
             const marker = L.marker([Number(event["lat"]), Number(event["lng"])], {
               icon: L.divIcon({
                 iconAnchor: [0, size * Math.sqrt(2)],
