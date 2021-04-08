@@ -260,7 +260,7 @@
       const $div = $label.find('div');
       const name = $label.find('span').text();
       const checked = artistsByName[name].checked;
-      $div.css({background: checked ? $div.css('borderColor') : "transparent"});
+      $div.css({background: checked ? $div.css('borderTopColor') : "transparent"});
       if (markers[name]) {
         for (const marker of markers[name]) {
           marker.setOpacity(checked * 1);
