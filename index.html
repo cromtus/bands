@@ -283,17 +283,17 @@
       }
     }
 
-    function updateMarkerOpacity(artistName, datetime, marker) {
+    function redrawMarker(artistName, datetime, marker) {
       if (!artistsByName[artistName].checked || dateRange != null && !moment(datetime).isBetween(dateRange.start, dateRange.end)) {
-        marker.setOpacity(0);
+        marker.getElement().style["display"] = "none";
       } else {
-        marker.setOpacity(1);
+        marker.getElement().style["display"] = "";
       }
     }
 
     function redrawMarkers() {
       for (const {marker, datetime, artistName} of events) {
-        updateMarkerOpacity(artistName, datetime, marker);
+        redrawMarker(artistName, datetime, marker);
       }
     }
 
@@ -380,7 +380,7 @@
               ${new Date(event["datetime"]).toDateString()}<br>
               <a href='${event["url"]}' target='_blank'>Ссылочка</a>
             `);
-            updateMarkerOpacity(artistName, event["datetime"], marker);
+            redrawMarker(artistName, event["datetime"], marker);
             /*
             var marker = new google.maps.Marker({
               icon: {
