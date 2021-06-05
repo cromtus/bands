@@ -262,9 +262,7 @@
       const checked = artistsByName[name].checked;
       $div.css({background: checked ? $div.css('borderTopColor') : "transparent"});
       if (markers[name]) {
-        for (const marker of markers[name]) {
-          marker.setOpacity(checked * 1);
-        }
+        redrawMarkers();
       }
     }
 
