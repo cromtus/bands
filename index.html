@@ -376,7 +376,7 @@
             marker.bindPopup(`
               <b>${event["city"]}</b><br>
               ${new Date(event["datetime"]).toDateString()}<br>
-              <a href='${event["url"]}' target='_blank'>Ссылочка</a>
+              <a href='${event["url"]}' target='_blank'>${artistName}</a>
             `);
             redrawMarker(artistName, event["datetime"], marker);
             /*
